@@ -1,0 +1,32 @@
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+         https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
+
+    <filter>
+        <filter-name>FormatFilter</filter-name>
+        <filter-class>com.timeapp.FormatFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>FormatFilter</filter-name>
+        <url-pattern>/time</url-pattern>
+    </filter-mapping>
+
+    <servlet>
+        <servlet-name>TimeServlet</servlet-name>
+        <servlet-class>com.timeapp.TimeServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TimeServlet</servlet-name>
+        <url-pattern>/time</url-pattern>
+    </servlet-mapping>
+
+    <listener>
+        <listener-class>com.timeapp.RequestListener</listener-class>
+    </listener>
+
+    <welcome-file-list>
+        <welcome-file>time.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>
