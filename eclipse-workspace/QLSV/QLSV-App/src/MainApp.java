@@ -9,6 +9,7 @@ import model.GiangVien;
 import model.Khoa;
 import model.MonHoc;
 import model.SinhVien;
+import utils.BaoCaoThongKe;
 
 import java.awt.*;
 import java.sql.Connection;
@@ -39,9 +40,9 @@ public class MainApp extends JFrame {
     public MainApp(String username, boolean isAdmin) {
         this.username = username;
         this.isAdmin = isAdmin;
-        this.maSVLoggedIn = maSVLoggedIn;
+        this.maSVLoggedIn = null;
 
-        setTitle("Hệ thống quản lý sinh viên  - " + username + (isAdmin ? " (Admin)" : ""));
+        setTitle("Hệ thống quản lý sinh viên - " + username + (isAdmin ? " (Admin)" : ""));
         setSize(1100, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -57,13 +58,14 @@ public class MainApp extends JFrame {
         KhoaDAO khoaDAO = new KhoaDAO(conn);
 
         // View
-        SinhVienView svView = new SinhVienView();
+        svView = new SinhVienView();
         GiangVienView gvView = new GiangVienView();
         LichHocView lhView = new LichHocView();
         MonHocView mhView = new MonHocView();
-        DiemView diemView = new DiemView();
+        diemView = new DiemView();
         KhoaView khoaView = new KhoaView();
         TimKiemView timKiemView = new TimKiemView();
+        BaoCaoThongKe baoCaoView = new BaoCaoThongKe(conn); // Thêm view cho báo cáo thống kê
 
         // Controller
         svController = new SinhVienController(svView, conn);
@@ -74,38 +76,27 @@ public class MainApp extends JFrame {
         khoaController = new KhoaController(khoaView, khoaDAO);
         timKiemController = new TimKiemController(timKiemView, svDAO, gvDAO, mhDAO, khoaDAO, diemDAO);
 
-        // Tabs
-        JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Quản lý Sinh Viên", svView);
-        tabbedPane.addTab("Quản lý Giảng Viên", gvView);
-        tabbedPane.addTab("Quản lý Lịch Học", lhView);
-        tabbedPane.addTab("Quản lý Môn Học", mhView);
-        tabbedPane.addTab("Quản lý Điểm", diemView);
-        tabbedPane.addTab("Quản lý Khoa", khoaView);
-        tabbedPane.addTab("Tìm Kiếm", timKiemView);
-        
+        // Tạo TabbedPane
+        tabbedPane = new JTabbedPane();
 
-     // Tabs
-
+        // Thêm tabs dựa trên quyền
         if (isAdmin) {
-            // Admin có quyền xem tất cả
-            tabbedPane.addTab(" Quản lý Sinh Viên", svView);
+            tabbedPane.addTab("Quản lý Sinh Viên", svView);
             tabbedPane.addTab("Quản lý Giảng Viên", gvView);
             tabbedPane.addTab("Quản lý Lịch Học", lhView);
             tabbedPane.addTab("Quản lý Môn Học", mhView);
             tabbedPane.addTab("Quản lý Điểm", diemView);
             tabbedPane.addTab("Quản lý Khoa", khoaView);
             tabbedPane.addTab("Tìm Kiếm", timKiemView);
+            tabbedPane.addTab("Thống Kê", baoCaoView); // Thêm tab thống kê cho admin
         } else {
-            // Sinh viên chỉ được xem thông tin cá nhân, điểm và lịch học
-            tabbedPane.addTab("Quản lý Sinh Viên", svView);
-            tabbedPane.addTab("Quản lý Lịch Học", lhView);
-            tabbedPane.addTab("Quản lý Điểm", diemView);
+            tabbedPane.addTab("Thông tin cá nhân", svView);
+            tabbedPane.addTab("Xem Điểm", diemView);
+            tabbedPane.addTab("Lịch Học", lhView);
+            tabbedPane.addTab("Tìm Kiếm", timKiemView);
         }
-        
 
         add(tabbedPane, BorderLayout.CENTER);
-        
 
         // Footer: Nút Logout và Export
         JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -116,8 +107,9 @@ public class MainApp extends JFrame {
         footerPanel.add(btnLogout);
         add(footerPanel, BorderLayout.SOUTH);
 
+        // Xử lý sự kiện Logout
         btnLogout.addActionListener(e -> {
-            dispose(); // Đóng MainApp
+            dispose();
             SwingUtilities.invokeLater(() -> {
                 LoginView login = new LoginView();
                 new LoginController(login);
@@ -125,6 +117,7 @@ public class MainApp extends JFrame {
             });
         });
 
+        // Xử lý sự kiện Export Excel
         btnExport.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Lưu file Excel");
@@ -135,60 +128,70 @@ public class MainApp extends JFrame {
                 String filePath = fileChooser.getSelectedFile().getAbsolutePath();
 
                 try {
-                    // Lấy dữ liệu và xuất theo loại được chọn
-                    String selectedTab = tabbedPane.getTitleAt(tabbedPane.getSelectedIndex());
-                    System.out.println("Tab đang chọn: " + selectedTab);
+                    String selectedTab = tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()).trim();
+                    System.out.println("Tab đang chọn: '" + selectedTab + "'");
 
+                    boolean exported = false;
 
-                    switch (selectedTab) {
-                        case "Quản lý Sinh Viên" -> {
-                            SinhVienDAO sinhVienDAO = new SinhVienDAO(conn);
-                            List<SinhVien> svList = sinhVienDAO.getAllSinhVien();
-                            BaoCaoThongKe.exportSinhVien(svList, filePath);
+                    if (selectedTab.contains("Sinh Viên")) {
+                        SinhVienDAO sinhVienDAO = new SinhVienDAO(conn);
+                        List<SinhVien> svList = sinhVienDAO.getAllSinhVien();
+                        BaoCaoThongKe.exportSinhVien(svList, filePath);
+                        exported = true;
+                    } else if (selectedTab.contains("Giảng Viên")) {
+                        GiangVienDAO giangVienDAO = new GiangVienDAO(conn);
+                        List<GiangVien> gvList = giangVienDAO.getAllGiangVien();
+                        BaoCaoThongKe.exportGiangVien(gvList, filePath);
+                        exported = true;
+                    } else if (selectedTab.contains("Môn Học")) {
+                        MonHocDAO monHocDAO = new MonHocDAO(conn);
+                        List<MonHoc> mhList = monHocDAO.getAllMonHoc();
+                        BaoCaoThongKe.exportMonHoc(mhList, filePath);
+                        exported = true;
+                    } else if (selectedTab.contains("Thống Kê")) {
+                        // Gọi hàm xuất toàn bộ dữ liệu từ BaoCaoThongKe
+                        baoCaoView.exportAllDataToExcel(filePath);
+                        exported = true;
+                    }
+
+                    if (!exported) {
+                        System.out.println("Tất cả các tab có sẵn:");
+                        for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+                            System.out.println("Tab " + i + ": '" + tabbedPane.getTitleAt(i) + "'");
                         }
-                        case "Quản lý Giảng Viên" -> {
-                            GiangVienDAO giangVienDAO = new GiangVienDAO(conn);
-                            List<GiangVien> gvList = giangVienDAO.getAllGiangVien();
-                            BaoCaoThongKe.exportGiangVien(gvList, filePath);
-                        }
-                        case "Quản lý Khoa" -> {
-                            KhoaDAO KhoaDAO = new KhoaDAO(conn);
-                            List<Khoa> khoaList = KhoaDAO.getAllKhoa();
-                            BaoCaoThongKe.exportKhoa(khoaList, filePath);
-                        }
-                        case "Quản lý Môn học" -> {
-                            MonHocDAO monHocDAO = new MonHocDAO(conn);
-                            List<MonHoc> mhList = monHocDAO.getAllMonHoc();
-                            BaoCaoThongKe.exportMonHoc(mhList, filePath);
-                        }
-                        default -> {
-                            JOptionPane.showMessageDialog(this, "Không xác định loại dữ liệu để xuất.");
-                            return;
-                        }
+                        JOptionPane.showMessageDialog(this,
+                                "Không xác định loại dữ liệu để xuất.\nTab hiện tại: '" + selectedTab + "'");
+                        return;
                     }
 
                     JOptionPane.showMessageDialog(this, "Xuất Excel thành công tại:\n" + filePath);
+
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     JOptionPane.showMessageDialog(this, "Lỗi khi xuất Excel: " + ex.getMessage());
                 }
             }
         });
-        if (!isAdmin) {
-            btnExport.setVisible(false); // Ẩn nút export nếu là sinh viên
-        }
-
 
         // Load dữ liệu ban đầu
-        svController.loadSinhVien();
-        gvController.loadGiangVien();
-        lhController.loadLichHoc();
-        mhController.loadMonHoc();
-        diemController.loadDiem();
-        khoaController.loadKhoa();
-        timKiemController.prepareSearch();
+        loadInitialData();
     }
-    
+
+    private void loadInitialData() {
+        try {
+            svController.loadSinhVien();
+            gvController.loadGiangVien();
+            lhController.loadLichHoc();
+            mhController.loadMonHoc();
+            diemController.loadDiem();
+            khoaController.loadKhoa();
+            timKiemController.prepareSearch();
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu: " + e.getMessage());
+        }
+    }
+
     private void connectDB() {
         String url = "jdbc:mysql://localhost:3306/quanlysv";
         String user = "root";
@@ -200,11 +203,47 @@ public class MainApp extends JFrame {
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Không thể kết nối CSDL!");
+            System.exit(1);
         }
     }
 
+    public MainApp(String username, boolean isAdmin, String maSV) {
+        this(username, isAdmin);
+        this.maSVLoggedIn = maSV;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public boolean isAdmin() {
+        return isAdmin;
+    }
+
+    public String getMaSVLoggedIn() {
+        return maSVLoggedIn;
+    }
+
+    @Override
+    public void dispose() {
+        try {
+            if (conn != null && !conn.isClosed()) {
+                conn.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        super.dispose();
+    }
+
     public static void main(String[] args) {
-    	SwingUtilities.invokeLater(() -> {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        SwingUtilities.invokeLater(() -> {
             LoginView loginView = new LoginView();
             new LoginController(loginView);
             loginView.setVisible(true);

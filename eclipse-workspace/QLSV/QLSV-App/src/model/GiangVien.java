@@ -12,7 +12,7 @@ public class GiangVien {
     private String maKhoa;
     private String hocVi;
     private String chucVu;
-    private double luong;
+    public double luong;
 
     public GiangVien() {
     }

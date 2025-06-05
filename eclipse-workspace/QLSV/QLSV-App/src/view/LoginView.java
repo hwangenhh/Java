@@ -1,6 +1,8 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.event.DocumentListener;
+
 import java.awt.*;
 
 public class LoginView extends JFrame {
@@ -69,12 +71,35 @@ public class LoginView extends JFrame {
         btnLogin = new JButton("Đăng nhập");
         btnLogin.setFont(font);
         btnLogin.setBackground(primaryColor);
-        btnLogin.setForeground(Color.WHITE);
+        btnLogin.setForeground(Color.BLACK);
         btnLogin.setFocusPainted(false);
         btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLogin.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         panel.add(btnLogin, gbc);
 
+        // Thêm listener để kiểm tra và kích hoạt nút
+        btnLogin.setEnabled(false); // Ban đầu vô hiệu hóa nút
+        DocumentListener docListener = new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { checkFields(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { checkFields(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { checkFields(); }
+
+            private void checkFields() {
+                String username = txtUsername.getText().trim();
+                String password = new String(txtPassword.getPassword()).trim();
+                btnLogin.setEnabled(!username.isEmpty() && !password.isEmpty());
+            }
+        };
+        txtUsername.getDocument().addDocumentListener(docListener);
+        txtPassword.getDocument().addDocumentListener(docListener);
+
         add(panel);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            LoginView loginView = new LoginView();
+            loginView.setVisible(true);
+        });
     }
 }
